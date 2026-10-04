@@ -10,9 +10,15 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+if OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+
 if OPENAI_BASE_URL:
     os.environ["OPENAI_BASE_URL"] = OPENAI_BASE_URL
     os.environ["OPENAI_API_BASE"] = OPENAI_BASE_URL
+
+if OPENAI_MODEL:
+    os.environ["OPENAI_MODEL"] = OPENAI_MODEL
 
 # --- Qdrant ---
 QDRANT_HOST = "localhost"

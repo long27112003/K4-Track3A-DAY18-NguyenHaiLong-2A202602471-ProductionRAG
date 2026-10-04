@@ -43,10 +43,27 @@ def _safe_float(val, default: float = 0.0) -> float:
 def evaluate_ragas(questions: list[str], answers: list[str],
                    contexts: list[list[str]], ground_truths: list[str]) -> dict:
     """Run RAGAS evaluation."""
+    from config import OPENAI_API_KEY, OPENAI_MODEL
+    has_valid_key = bool(
+        OPENAI_API_KEY
+        and not OPENAI_API_KEY.startswith("sk-or-v1-YOUR")
+        and not OPENAI_API_KEY.startswith("sk-...")
+        and not OPENAI_API_KEY.startswith("your_")
+    )
+    if not has_valid_key:
+        return {
+            "faithfulness": 0.0,
+            "answer_relevancy": 0.0,
+            "context_precision": 0.0,
+            "context_recall": 0.0,
+            "per_question": [],
+        }
+
     try:
         from ragas import evaluate
         from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
         from datasets import Dataset
+        from langchain_openai import ChatOpenAI
 
         dataset = Dataset.from_dict({
             "question": questions,
@@ -54,8 +71,12 @@ def evaluate_ragas(questions: list[str], answers: list[str],
             "contexts": contexts,
             "ground_truth": ground_truths,
         })
-        result = evaluate(dataset, metrics=[faithfulness, answer_relevancy,
-                                            context_precision, context_recall])
+        eval_llm = ChatOpenAI(model=OPENAI_MODEL)
+        result = evaluate(
+            dataset,
+            metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+            llm=eval_llm,
+        )
         df = result.to_pandas()
         per_question = [
             EvalResult(
@@ -125,16 +146,22 @@ def failure_analysis(eval_results: list[EvalResult], bottom_n: int = 10) -> list
     return scored_items[:bottom_n]
 
 
-def save_report(results: dict, failures: list[dict], path: str = "reports/ragas_report.json"):
+def save_report(results: dict, failures: list[dict], path: str = "reports/ragas_report.json",
+                latency_breakdown: dict | None = None):
     """Save evaluation report to JSON. (Đã implement sẵn)"""
     parent_dir = os.path.dirname(path)
     if parent_dir:
         os.makedirs(parent_dir, exist_ok=True)
     report = {
-        "aggregate": {k: v for k, v in results.items() if k != "per_question"},
+        "aggregate": {k: v for k, v in results.items() if k not in ("per_question", "latency_breakdown")},
         "num_questions": len(results.get("per_question", [])),
         "failures": failures,
     }
+    if latency_breakdown:
+        report["latency_breakdown"] = latency_breakdown
+    elif "latency_breakdown" in results:
+        report["latency_breakdown"] = results["latency_breakdown"]
+
     with open(path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"Report saved to {path}")

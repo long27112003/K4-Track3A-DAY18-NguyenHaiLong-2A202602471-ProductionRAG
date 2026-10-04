@@ -31,7 +31,12 @@ class EnrichedChunk:
 
 
 def _has_api_key() -> bool:
-    return bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-or-v1-YOUR") and not OPENAI_API_KEY.startswith("sk-..."))
+    return bool(
+        OPENAI_API_KEY
+        and not OPENAI_API_KEY.startswith("sk-or-v1-YOUR")
+        and not OPENAI_API_KEY.startswith("sk-...")
+        and not OPENAI_API_KEY.startswith("your_")
+    )
 
 
 # ─── Technique 1: Chunk Summarization ────────────────────

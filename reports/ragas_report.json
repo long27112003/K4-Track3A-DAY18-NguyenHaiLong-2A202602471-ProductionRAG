@@ -1,0 +1,120 @@
+{
+  "aggregate": {
+    "faithfulness": 0.7083333333333334,
+    "answer_relevancy": 0.6835712434679376,
+    "context_precision": 0.9027777777409723,
+    "context_recall": 0.8888888888888888
+  },
+  "num_questions": 20,
+  "failures": [
+    {
+      "question": "Bao lâu phải đổi mật khẩu một lần?",
+      "answer": "Không tìm thấy.",
+      "ground_truth": "Theo chính sách hiện hành (v2.0), mật khẩu phải được thay đổi mỗi 120 ngày. Chính sách cũ yêu cầu 90 ngày nhưng đã bị thay thế.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.0,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Lương thử việc của nhân viên Junior mức cao nhất là bao nhiêu?",
+      "answer": "Không tìm thấy.",
+      "ground_truth": "Junior cao nhất là 20.000.000 VNĐ/tháng. Lương thử việc = 85% x 20.000.000 = 17.000.000 VNĐ/tháng.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.0,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Một nhân viên Senior có 9 năm thâm niên được nghỉ bao nhiêu ngày phép năm và lương trong khoảng nào?",
+      "answer": "Nhân viên có 9 năm thâm niên được 18 ngày phép (15 + 3). Không tìm thấy thông tin về lương.",
+      "ground_truth": "Theo chính sách v2024: 15 ngày cơ bản + 3 ngày thâm niên (9÷3=3) = 18 ngày phép. Lương Senior (P3-P4): 20-35 triệu VNĐ/tháng.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.125,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Nếu cần mua một chiếc laptop 30 triệu cho nhân viên mới, ai phê duyệt và cần gì từ phòng CNTT?",
+      "answer": "Cần có xác nhận của phòng CNTT về cấu hình kỹ thuật trước khi đề xuất. Vì đây là một chiếc laptop có giá 30 triệu, trưởng phòng sẽ phê duyệt đơn hàng.",
+      "ground_truth": "Laptop 30 triệu nằm trong khoảng 5-50 triệu nên cần Giám đốc phòng ban (Director) phê duyệt. Ngoài ra, mua sắm thiết bị CNTT cần có xác nhận cấu hình kỹ thuật từ phòng CNTT trước khi đề xuất. Cần đính kèm ít nhất 3 báo giá vì trên 10 triệu.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.16666666666666666,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Phụ cấp ăn trưa hàng tháng là bao nhiêu?",
+      "answer": "Phụ cấp ăn trưa hàng tháng là **1.000.000 VNĐ/tháng**.",
+      "ground_truth": "Phụ cấp ăn trưa là 1.000.000 VNĐ/tháng, chi trả cùng kỳ lương.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.2039062863658243,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Khi phát hiện malware trên máy, nhân viên có nên tự xử lý không?",
+      "answer": "Nhân viên **không nên tự xử lý** malware mà không có sự hướng dẫn của đội CNTT.",
+      "ground_truth": "KHÔNG. Nhân viên tuyệt đối không được tự ý xử lý malware. Phải báo cáo trong vòng 1 giờ qua helpdesk@cty.vn hoặc hotline CNTT. Tự ý xử lý bị coi là vi phạm nghiêm trọng.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.24999999999166667,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Mentor và buddy của nhân viên mới có thể là cùng một người không? Quản lý trực tiếp có thể làm mentor không?",
+      "answer": "Mentor và Buddy của nhân viên mới **không thể là cùng một người**. Quản lý trực tiếp **không được làm Mentor hoặc Buddy**.",
+      "ground_truth": "KHÔNG cho cả hai. Mentor và buddy phải là hai người khác nhau. Quản lý trực tiếp không được làm mentor hoặc buddy.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.24999999999166667,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Nhân viên thử việc có được hưởng bảo hiểm sức khỏe PVI không?",
+      "answer": "Không tìm thấy.",
+      "ground_truth": "KHÔNG. Nhân viên thử việc chưa được hưởng gói bảo hiểm sức khỏe PVI. Chỉ được tham gia bảo hiểm xã hội bắt buộc.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.25,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Muốn mua thiết bị trị giá 55 triệu cần ai phê duyệt?",
+      "answer": "Cần Tổng Giám đốc (CEO) phê duyệt.",
+      "ground_truth": "Đơn hàng trên 50.000.000 VNĐ cần Tổng Giám đốc (CEO) phê duyệt.",
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "avg_score": 0.25,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Nhân viên được tài trợ khóa học 25 triệu, nghỉ việc sau 8 tháng hoàn thành khóa học. Phải hoàn trả bao nhiêu?",
+      "answer": "Nhân viên phải hoàn trả **100% chi phí** đào tạo đã được tài trợ. Vì vậy, nhân viên phải hoàn trả **25.000.000 VNĐ**.",
+      "ground_truth": "Nhân viên phải cam kết làm việc ít nhất 1 năm sau khi hoàn thành khóa học. Nghỉ sau 8 tháng là trước hạn cam kết, phải hoàn trả 100% chi phí tức 25.000.000 VNĐ.",
+      "worst_metric": "context_precision",
+      "score": 0.0,
+      "avg_score": 0.3246087856941837,
+      "diagnosis": "Too many irrelevant chunks",
+      "suggested_fix": "Add reranking or metadata filter"
+    }
+  ],
+  "latency_breakdown": {
+    "chunking_s": 0.06,
+    "enrichment_s": 50.25,
+    "indexing_s": 57.52,
+    "reranker_setup_s": 0.0,
+    "queries_generation_s": 222.32,
+    "ragas_evaluation_s": 27.25,
+    "total_pipeline_s": 357.4
+  }
+}

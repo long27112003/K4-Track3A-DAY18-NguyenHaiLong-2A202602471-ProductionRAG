@@ -24,6 +24,8 @@ def build_pipeline():
     print("PRODUCTION RAG PIPELINE")
     print("=" * 60, flush=True)
 
+    latencies = {}
+
     # Step 1: Load & Chunk (M1)
     t0 = time.time()
     print("\n[1/4] Chunking documents...", flush=True)
@@ -33,7 +35,8 @@ def build_pipeline():
         parents, children = chunk_hierarchical(doc["text"], metadata=doc["metadata"])
         for child in children:
             all_chunks.append({"text": child.text, "metadata": {**child.metadata, "parent_id": child.parent_id}})
-    print(f"  ✓ {len(all_chunks)} chunks from {len(docs)} documents ({time.time()-t0:.1f}s)", flush=True)
+    latencies["chunking_s"] = round(time.time() - t0, 2)
+    print(f"  ✓ {len(all_chunks)} chunks from {len(docs)} documents ({latencies['chunking_s']:.1f}s)", flush=True)
 
     # Step 2: Enrichment (M5)
     t0 = time.time()
@@ -41,8 +44,10 @@ def build_pipeline():
     enriched = enrich_chunks(all_chunks)
     if enriched:
         all_chunks = [{"text": e.enriched_text, "metadata": e.auto_metadata} for e in enriched]
-        print(f"  ✓ Enriched {len(enriched)} chunks ({time.time()-t0:.1f}s)", flush=True)
+        latencies["enrichment_s"] = round(time.time() - t0, 2)
+        print(f"  ✓ Enriched {len(enriched)} chunks ({latencies['enrichment_s']:.1f}s)", flush=True)
     else:
+        latencies["enrichment_s"] = 0.0
         print("  ⚠️  M5 not implemented — using raw chunks", flush=True)
 
     # Step 3: Index (M2)
@@ -50,15 +55,17 @@ def build_pipeline():
     print(f"\n[3/4] Indexing {len(all_chunks)} chunks (BM25 + Dense)...", flush=True)
     search = HybridSearch()
     search.index(all_chunks)
-    print(f"  ✓ Indexed ({time.time()-t0:.1f}s)", flush=True)
+    latencies["indexing_s"] = round(time.time() - t0, 2)
+    print(f"  ✓ Indexed ({latencies['indexing_s']:.1f}s)", flush=True)
 
     # Step 4: Reranker (M3)
     t0 = time.time()
     print("\n[4/4] Loading reranker...", flush=True)
     reranker = CrossEncoderReranker()
-    print(f"  ✓ Reranker ready ({time.time()-t0:.1f}s)", flush=True)
+    latencies["reranker_setup_s"] = round(time.time() - t0, 2)
+    print(f"  ✓ Reranker ready ({latencies['reranker_setup_s']:.1f}s)", flush=True)
 
-    return search, reranker
+    return search, reranker, latencies
 
 
 def run_query(query: str, search: HybridSearch, reranker: CrossEncoderReranker) -> tuple[str, list[str]]:
@@ -69,7 +76,13 @@ def run_query(query: str, search: HybridSearch, reranker: CrossEncoderReranker) 
     contexts = [r.text for r in reranked] if reranked else [r.text for r in results[:3]]
 
     from config import OPENAI_API_KEY
-    if OPENAI_API_KEY and contexts:
+    has_valid_key = bool(
+        OPENAI_API_KEY
+        and not OPENAI_API_KEY.startswith("sk-or-v1-YOUR")
+        and not OPENAI_API_KEY.startswith("sk-...")
+        and not OPENAI_API_KEY.startswith("your_")
+    )
+    if has_valid_key and contexts:
         try:
             from openai import OpenAI
             client = OpenAI()
@@ -87,12 +100,13 @@ def run_query(query: str, search: HybridSearch, reranker: CrossEncoderReranker) 
     return answer, contexts
 
 
-def evaluate_pipeline(search: HybridSearch, reranker: CrossEncoderReranker):
+def evaluate_pipeline(search: HybridSearch, reranker: CrossEncoderReranker, pipeline_latencies: dict | None = None):
     """Run evaluation on test set."""
     test_set = load_test_set()
     print(f"\n[Eval] Running {len(test_set)} queries...", flush=True)
     questions, answers, all_contexts, ground_truths = [], [], [], []
 
+    t_queries = time.time()
     for i, item in enumerate(test_set):
         answer, contexts = run_query(item["question"], search, reranker)
         questions.append(item["question"])
@@ -100,11 +114,21 @@ def evaluate_pipeline(search: HybridSearch, reranker: CrossEncoderReranker):
         all_contexts.append(contexts)
         ground_truths.append(item["ground_truth"])
         print(f"  [{i+1}/{len(test_set)}] {item['question'][:50]}...", flush=True)
+    query_latency = round(time.time() - t_queries, 2)
 
     t0 = time.time()
     print(f"\n[Eval] Running RAGAS (4 metrics × {len(test_set)} questions)...", flush=True)
     results = evaluate_ragas(questions, answers, all_contexts, ground_truths)
-    print(f"  ✓ RAGAS done ({time.time()-t0:.1f}s)", flush=True)
+    eval_latency = round(time.time() - t0, 2)
+    print(f"  ✓ RAGAS done ({eval_latency:.1f}s)", flush=True)
+
+    latencies = {
+        **(pipeline_latencies or {}),
+        "queries_generation_s": query_latency,
+        "ragas_evaluation_s": eval_latency,
+    }
+    total_time = sum(latencies.values())
+    latencies["total_pipeline_s"] = round(total_time, 2)
 
     print("\n" + "=" * 60)
     print("PRODUCTION RAG SCORES")
@@ -113,13 +137,23 @@ def evaluate_pipeline(search: HybridSearch, reranker: CrossEncoderReranker):
         s = results.get(m, 0)
         print(f"  {'✓' if s >= 0.75 else '✗'} {m}: {s:.4f}")
 
+    # Latency Breakdown Report (Bonus +2)
+    print("\n" + "=" * 60)
+    print("LATENCY BREAKDOWN REPORT (Bonus +2)")
+    print("=" * 60)
+    print(f"{'Pipeline Stage':<35} {'Duration':>15}")
+    print("-" * 52)
+    for step_name, dur in latencies.items():
+        print(f"{step_name:<35} {dur:>12.2f}s")
+    print("=" * 60)
+
     failures = failure_analysis(results.get("per_question", []))
-    save_report(results, failures)
+    save_report(results, failures, latency_breakdown=latencies)
     return results
 
 
 if __name__ == "__main__":
     start = time.time()
-    search, reranker = build_pipeline()
-    evaluate_pipeline(search, reranker)
+    search, reranker, latencies = build_pipeline()
+    evaluate_pipeline(search, reranker, latencies)
     print(f"\nTotal: {time.time() - start:.1f}s")

@@ -16,7 +16,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from src.m1_chunking import load_documents, chunk_basic
 from src.m2_search import DenseSearch
 from src.m4_eval import load_test_set, evaluate_ragas, save_report
-from config import NAIVE_COLLECTION, OPENAI_MODEL
+from config import NAIVE_COLLECTION, OPENAI_MODEL, OPENAI_API_KEY
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 
 def main():
@@ -38,10 +43,14 @@ def main():
     test_set = load_test_set()
     questions, answers, all_contexts, ground_truths = [], [], [], []
 
-    from config import OPENAI_API_KEY
     llm_client = None
-    if OPENAI_API_KEY:
-        from openai import OpenAI
+    has_valid_key = bool(
+        OPENAI_API_KEY
+        and not OPENAI_API_KEY.startswith("sk-or-v1-YOUR")
+        and not OPENAI_API_KEY.startswith("sk-...")
+        and not OPENAI_API_KEY.startswith("your_")
+    )
+    if has_valid_key and OpenAI is not None:
         llm_client = OpenAI()
 
     for i, item in enumerate(test_set):
