@@ -167,8 +167,7 @@ def _enrich_single_call(text: str, source: str) -> dict:
     if _has_api_key():
         try:
             import json as _json
-            from openai import OpenAI
-            client = OpenAI()
+            client = _get_openai_client()
             resp = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
@@ -198,6 +197,17 @@ def _enrich_single_call(text: str, source: str) -> dict:
     }
 
 
+_openai_client = None
+
+
+def _get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        from openai import OpenAI
+        _openai_client = OpenAI()
+    return _openai_client
+
+
 # ─── Full Enrichment Pipeline ────────────────────────────
 
 
@@ -222,8 +232,7 @@ def enrich_chunks(
 
     use_combined = "combined" in methods
 
-    enriched = []
-    for i, chunk in enumerate(chunks):
+    def _process_one(chunk):
         text = chunk["text"]
         source = chunk.get("metadata", {}).get("source", "")
 
@@ -240,17 +249,22 @@ def enrich_chunks(
             enriched_text = contextual_prepend(text, source) if "contextual" in methods else text
             auto_meta = extract_metadata(text) if "metadata" in methods else {}
 
-        enriched.append(EnrichedChunk(
+        return EnrichedChunk(
             original_text=text,
             enriched_text=enriched_text,
             summary=summary,
             hypothesis_questions=questions,
             auto_metadata={**chunk.get("metadata", {}), **auto_meta},
             method="+".join(methods),
-        ))
+        )
 
-        if (i + 1) % 10 == 0 or (i + 1) == len(chunks):
-            print(f"  Enriched {i + 1}/{len(chunks)} chunks...", flush=True)
+    if _has_api_key() and len(chunks) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        print(f"  Parallel enriching {len(chunks)} chunks with 8 workers...", flush=True)
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            enriched = list(executor.map(_process_one, chunks))
+    else:
+        enriched = [_process_one(c) for c in chunks]
 
     return enriched
 
