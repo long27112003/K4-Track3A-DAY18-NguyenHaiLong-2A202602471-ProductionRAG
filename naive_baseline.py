@@ -19,7 +19,7 @@ from src.m4_eval import load_test_set, evaluate_ragas, save_report
 from config import NAIVE_COLLECTION, OPENAI_MODEL, OPENAI_API_KEY
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI  # type: ignore
 except ImportError:
     OpenAI = None
 

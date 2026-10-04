@@ -1,3 +1,11 @@
 {
-  "python.defaultInterpreterPath": "C:\\Users\\PC\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
+  "python.defaultInterpreterPath": "C:\\Users\\PC\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+  "python.analysis.typeCheckingMode": "off",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  },
+  "python.analysis.extraPaths": [
+    "C:\\Users\\PC\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages",
+    "src"
+  ]
 }
