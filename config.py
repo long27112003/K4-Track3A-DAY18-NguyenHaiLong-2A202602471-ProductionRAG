@@ -5,8 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- API Keys ---
+# --- API Keys & LLM Endpoint ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+if OPENAI_BASE_URL:
+    os.environ["OPENAI_BASE_URL"] = OPENAI_BASE_URL
+    os.environ["OPENAI_API_BASE"] = OPENAI_BASE_URL
 
 # --- Qdrant ---
 QDRANT_HOST = "localhost"
