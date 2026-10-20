@@ -177,7 +177,8 @@ def chunk_hierarchical(text: str, parent_size: int = HIERARCHICAL_PARENT_SIZE,
     children: list[Chunk] = []
 
     for p_idx, p_text in enumerate(parent_texts):
-        pid = f"parent_{p_idx}"
+        # Include the source: every document starts its own parent index at zero.
+        pid = f"{metadata.get('source', 'document')}::parent_{p_idx}"
         parents.append(Chunk(
             text=p_text,
             metadata={**metadata, "chunk_type": "parent", "parent_id": pid, "chunk_index": p_idx},

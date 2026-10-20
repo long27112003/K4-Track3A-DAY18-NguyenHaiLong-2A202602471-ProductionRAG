@@ -175,6 +175,8 @@ def _enrich_single_call(text: str, source: str) -> dict:
             client = _get_openai_client()
             resp = client.chat.completions.create(
                 model=OPENAI_MODEL,
+                temperature=0,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": """Phân tích đoạn văn và trả về JSON:
 {
@@ -194,11 +196,15 @@ def _enrich_single_call(text: str, source: str) -> dict:
         except Exception as e:
             print(f"  ⚠️  Enrichment API failed: {e}")
 
+    # Keep combined mode to at most one API call per chunk even if that call
+    # fails. The normal helpers would each issue another request.
+    import re
+    sentences = [s.strip() for s in re.split(r"[.!?\n]+", text) if s.strip()]
     return {
-        "summary": summarize_chunk(text),
-        "questions": generate_hypothesis_questions(text),
+        "summary": ". ".join(sentences[:2]),
+        "questions": [f"{s}?" for s in sentences[:3]],
         "context": f"Trích từ {source}." if source else "",
-        "metadata": extract_metadata(text),
+        "metadata": {"topic": "general", "entities": [], "category": "policy", "language": "vi"},
     }
 
 

@@ -16,10 +16,12 @@ Map từng concept trong lecture vào code vừa viết trong lab:
 | Hierarchical chunking | M1 | `chunk_hierarchical()` | "Tạo parent (2048 chars) bao quát ngữ cảnh và children (256 chars) cho retrieval chính xác cao; khi match child thì trả về parent để LLM đọc ngữ cảnh rộng." |
 | Structure-Aware chunking | M1 | `chunk_structure_aware()` | "Phân tích cú pháp Markdown header (#, ##, ###) để phân vùng section logic, giữ nguyên vẹn bảng biểu, danh sách và quy chế." |
 | BM25 + Dense fusion | M2 | `reciprocal_rank_fusion()` | "RRF score(d) = Σ 1/(k + rank + 1) với k=60; cân bằng giữa từ khóa chính xác (lexical BM25 tiếng Việt) và ngữ nghĩa sâu (dense vector BAAI/bge-m3)." |
-| Cross-encoder reranking | M3 | `CrossEncoderReranker.rerank()` | "Đưa 20 candidates qua model bge-reranker-v2-m3 để chấm điểm cross-attention query-document, chọn top 3 chính xác nhất, loại bỏ tài liệu nhiễu." |
+| Cross-encoder reranking | M3 | `CrossEncoderReranker.rerank()` | "Đưa tối đa 20 candidates qua model bge-reranker-v2-m3 để chấm điểm cross-attention query-document, chọn top 4 và giữ thêm nguồn cho từng vế của câu hỏi kép." |
 | RAGAS 4 metrics | M4 | `evaluate_ragas()` | "Đánh giá 4 chỉ số: Faithfulness (độ trung thực), Answer Relevancy (mức liên quan câu trả lời), Context Precision (tỉ lệ chunk đúng trong retrieved), Context Recall (tỉ lệ thông tin cần thiết được tìm thấy)." |
 | Diagnostic Tree & Failure Analysis | M4 | `failure_analysis()` | "Tự động phân loại nguyên nhân lỗi theo cây chẩn đoán (LLM hallucination, thiếu chunk liên quan, nhiễu chunk) và đề xuất cách khắc phục tương ứng." |
 | Contextual embeddings & Enrichment | M5 | `contextual_prepend()` / `_enrich_single_call()` | "Kỹ thuật contextual prepend theo Anthropic benchmark giúp giảm 49% retrieval failure; chế độ combined mode gọi 1 API duy nhất cho 4 tác vụ tiết kiệm 75% chi phí API." |
+
+Lượt chạy live ngày 21/10/2026 dùng OpenAI `gpt-4o-mini`: faithfulness 0.9042, answer relevancy 0.8697, context precision 0.9917, context recall 0.9000 trên 20 câu. Kết quả và latency của chính lượt này được lưu ở `reports/ragas_report.json`.
 
 ---
 
@@ -27,11 +29,15 @@ Map từng concept trong lecture vào code vừa viết trong lab:
 
 - **Lỗi kỹ thuật gặp phải (Exact error message):**
   - `ModuleNotFoundError: No module named 'rank_bm25'`, `sentence_transformers` khi chạy pytest ban đầu.
+  - `ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4` khi cài các bản mới nhất trong môi trường kiểm thử độc lập.
+  - Câu phí tạm ứng ban đầu cộng sai 300.000 VNĐ/tháng với 50.000 VNĐ cho 5 ngày thành 350.000 VNĐ. Kiểm tra lại `data/tam_ung.md` cho thấy 300.000 VNĐ chỉ là mức phí của trọn tháng; phép tính theo 30 ngày cho 5 ngày quá hạn là khoảng 50.000 VNĐ.
   - Cảnh báo xung đột dependency: `langgraph 1.2.11 requires langchain-core<2,>=1.4.7, but you have langchain-core 0.2.43`.
   - IDE Pylance báo gạch đỏ `Import "openai" could not be resolved` do hệ thống Windows có 2 phiên bản Python (3.14 và 3.12).
 - **Nguyên nhân gốc rễ & Cách debug:**
   - Hệ thống máy tính có Python 3.14 làm mặc định của OS, trong khi môi trường cài đặt gói bài lab là Python 3.12. Đã tạo file `.vscode/settings.json` trỏ rõ `python.defaultInterpreterPath` về Python 3.12.
   - Chạy `pip install -r requirements.txt` để cài đặt đầy đủ bộ thư viện cho Python 3.12. Thông báo `langgraph` là cảnh báo xung đột của môi trường chung nhưng không ảnh hưởng vì Lab 18 không phụ thuộc vào `langgraph`.
+  - Để tái lập lần kiểm tra mới trên Python 3.11, ghim `datasets<3`, `pyarrow<18`, `numpy<2`, `sentence-transformers<4` và `transformers<5` trong `requirements.txt`; chạy `uv pip check` xác nhận toàn bộ gói tương thích.
+  - Thêm bước tính số học từ dữ kiện đã truy xuất trong `src/pipeline.py`; câu phí quá hạn dùng kết quả của bộ tính để tránh model cộng hai mốc phí. Test hồi quy xác nhận không còn 350.000 VNĐ.
   - Cấu hình file `.env` chuẩn endpoint `https://openrouter.ai/api/v1` cùng model `openai/gpt-4o-mini`, tinh chỉnh `config.py` và `m4_eval.py` truyền model rõ ràng tránh lỗi 404 từ OpenRouter.
 - **Kiến thức còn thiếu & Cách khắc phục:**
   - Đã củng cố kiến thức về cách hoạt động của RRF (Reciprocal Rank Fusion) và sự khác biệt giữa Bi-Encoder (Dense retrieval) và Cross-Encoder (Reranker).

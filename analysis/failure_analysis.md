@@ -1,84 +1,62 @@
 # Failure Analysis — Lab 18: Production RAG
 
-**Họ và tên học viên:** Nguyễn Hải Long  
-**Khóa:** K4 - Track 3A  
-**MSSV:** 2A202602471  
+**Học viên:** Nguyễn Hải Long · **MSSV:** 2A202602471
+**Lượt đánh giá:** 20 câu, pipeline và RAGAS chạy live ngày 21/10/2026. Nguồn: `reports/ragas_report.json`.
 
----
+## Kết quả
 
-## RAGAS Scores
+| Metric | Naive baseline | Production | Chênh lệch |
+|---|---:|---:|---:|
+| Faithfulness | 0.8333 | 0.9042 | +0.0708 |
+| Answer relevancy | 0.6637 | 0.8697 | +0.2061 |
+| Context precision | 0.9222 | 0.9917 | +0.0694 |
+| Context recall | 0.9211 | 0.9000 | -0.0211 |
 
-| Metric | Naive Baseline | Production | Δ |
-|--------|:-------------:|:----------:|:--:|
-| Faithfulness | 0.8333 | 0.7083 | -0.1250 |
-| Answer Relevancy | 0.6637 | 0.6836 | +0.0199 |
-| Context Precision | 0.9222 | 0.9028 | -0.0194 |
-| Context Recall | 0.9211 | 0.8889 | -0.0322 |
+Năm module đạt 38/38 test trong môi trường có đủ dependency. Faithfulness ≥0.85, cả bốn metric ≥0.75, enrichment combined mode một API call/chunk và bảng latency thỏa bốn điều kiện bonus công khai (+10 tối đa); điểm chính thức vẫn do giám khảo chấm. Hai PDF scan ảnh không có text layer được loader bỏ qua có cảnh báo, cần OCR nếu muốn đưa chúng vào corpus.
 
----
+## Bottom-5: chẩn đoán theo Error Tree
 
-## Bottom-5 Failures
+### 1. Hoàn trả khóa học 25 triệu sau 8 tháng
 
-### #1
-- **Question:** Bao lâu phải đổi mật khẩu một lần?
-- **Expected:** Theo chính sách hiện hành (v2.0), mật khẩu phải được thay đổi mỗi 120 ngày. Chính sách cũ yêu cầu 90 ngày nhưng đã bị thay thế.
-- **Got:** Không tìm thấy.
-- **Worst metric:** Faithfulness (0.00)
-- **Error Tree:** Output sai (Không tìm thấy) → Context retrieved có chứa chunk chính sách mật khẩu v2.0? (Thiếu chunk v2.0 do reranker ưu tiên v1.0 hoặc bị cắt chunk) → Root cause ở Retrieval / Reranking.
-- **Root cause:** Khi query ngắn và thiếu context phiên bản ("v2.0"), BM25 và Dense retrieve cả `mat_khau_v1.md` và `mat_khau_v2.md`. Cross-encoder reranker có thể đã lọc nhầm hoặc prompt LLM quá khắt khe khi thấy xung đột giữa 90 ngày và 120 ngày nên trả về "Không tìm thấy".
-- **Suggested fix:** Thêm metadata filter ưu tiên tài liệu có version mới nhất (`version: 2.0`), hoặc bổ sung query rewriting để nhận diện "hiện hành / mới nhất".
+- **Kết quả:** 25.000.000 VNĐ, bằng 100% chi phí, vì nghỉ trước cam kết 1 năm. Nội dung khớp đáp án tham chiếu; RAGAS faithfulness vẫn chỉ 0.3333.
+- **Error Tree:** Output đúng số và điều kiện → tài liệu `hoan_chi_dao_tao.md` có mốc 1 năm và tỷ lệ 100% → claim “8 tháng < 1 năm” và phép nhân 100% cần được đối chiếu với bước suy luận được đưa vào context → điểm thấp có thể đến từ cách judge tách claim hoặc context cụ thể, chưa đủ căn cứ gọi đây là hallucination.
+- **Cách xử lý:** Pipeline đã thêm phép tính có điều kiện vào context từ dữ kiện truy xuất. Cần lưu trace claim/context từng câu để kiểm tra vì RAGAS vẫn chấm thấp; không sửa tay câu trả lời hoặc điểm.
 
-### #2
-- **Question:** Lương thử việc của nhân viên Junior mức cao nhất là bao nhiêu?
-- **Expected:** Junior cao nhất là 20.000.000 VNĐ/tháng. Lương thử việc = 85% x 20.000.000 = 17.000.000 VNĐ/tháng.
-- **Got:** Không tìm thấy.
-- **Worst metric:** Faithfulness (0.00)
-- **Error Tree:** Output sai → Context đúng? (Context chỉ có thông tin bảng lương hoặc chính sách thử việc riêng lẻ, thiếu phép tính suy luận đa tài liệu) → Multi-hop reasoning failure.
-- **Root cause:** Câu hỏi yêu cầu thông tin từ 2 nguồn tài liệu khác nhau: `bang_luong_2024.md` (mức lương Junior tối đa 20tr) và `thu_viec.md` (lương thử việc = 85% lương chính thức). Pipeline retrieval chỉ lấy top-3 chunks đơn lẻ nên không gom đủ cả 2 chunks cùng lúc.
-- **Suggested fix:** Tăng retrieval top-k trước khi rerank (top 30), hoặc triển khai Multi-hop / Agentic query decomposition tách thành 2 sub-queries: "Lương tối đa Junior?" và "Tỷ lệ lương thử việc?".
+### 2. Nghỉ không lương 20 ngày
 
-### #3
-- **Question:** Một nhân viên Senior có 9 năm thâm niên được nghỉ bao nhiêu ngày phép năm và lương trong khoảng nào?
-- **Expected:** Theo chính sách v2024: 15 ngày cơ bản + 3 ngày thâm niên (9÷3=3) = 18 ngày phép. Lương Senior (P3-P4): 20-35 triệu VNĐ/tháng.
-- **Got:** Nhân viên có 9 năm thâm niên được 18 ngày phép (15 + 3). Không tìm thấy thông tin về lương.
-- **Worst metric:** Faithfulness (0.00)
-- **Error Tree:** Output thiếu 1 vế (vế lương) → Context đúng? (Context chỉ retrieve được chunk về chính sách nghỉ phép `nghi_phep_nam_v2024.md`, không retrieve được `bang_luong_2024.md`) → Retrieval Recall bị hụt đối với multi-aspect query.
-- **Root cause:** Câu hỏi kép kết hợp 2 chủ đề hoàn toàn độc lập ("ngày phép" và "mức lương"). Dense embedding và BM25 bị lệch trọng số về phía từ khóa "nghỉ phép thâm niên", đẩy các chunk về bảng lương ra khỏi top 20 candidate.
-- **Suggested fix:** Áp dụng Sub-query decomposition hoặc Query splitting trong module tiền xử lý truy vấn: tách câu hỏi phức thành "Số ngày phép của Senior 9 năm thâm niên" và "Mức lương Senior".
+- **Kết quả:** CEO phê duyệt, đúng vế được hỏi; faithfulness 0.5000. Đáp án tham chiếu còn nhắc nhân viên tự đóng phần bảo hiểm khi nghỉ trên 14 ngày.
+- **Error Tree:** Output đúng thẩm quyền nhưng thiếu nghĩa vụ đi kèm → `nghi_phep_khong_luong.md` có cả ngưỡng 16–30 ngày và ngưỡng bảo hiểm >14 ngày → vấn đề ở khâu tổng hợp câu trả lời, không phải thiếu quy định trong corpus.
+- **Cách xử lý:** Với câu hỏi về nghỉ không lương, prompt hoặc quy tắc trả lời nên yêu cầu nêu nghĩa vụ bảo hiểm liên quan nếu số ngày vượt ngưỡng. Không thêm nghĩa vụ không có trong nguồn.
 
-### #4
-- **Question:** Nếu cần mua một chiếc laptop 30 triệu cho nhân viên mới, ai phê duyệt và cần gì từ phòng CNTT?
-- **Expected:** Laptop 30 triệu nằm trong khoảng 5-50 triệu nên cần Giám đốc phòng ban (Director) phê duyệt. Ngoài ra, mua sắm thiết bị CNTT cần có xác nhận cấu hình kỹ thuật từ phòng CNTT trước khi đề xuất. Cần đính kèm ít nhất 3 báo giá vì trên 10 triệu.
-- **Got:** Cần có xác nhận của phòng CNTT về cấu hình kỹ thuật trước khi đề xuất. Vì đây là một chiếc laptop có giá 30 triệu, trưởng phòng sẽ phê duyệt đơn hàng.
-- **Worst metric:** Faithfulness (0.00)
-- **Error Tree:** Output sai thẩm quyền phê duyệt ("trưởng phòng" thay vì "Giám đốc phòng ban/Director") → Context đúng? (Context có bảng hạn mức mua sắm) → LLM ánh xạ nhầm mốc hạn mức thẩm quyền.
-- **Root cause:** Tài liệu `mua_sam.md` quy định nhiều phân cấp thẩm quyền (dưới 5tr: Trưởng phòng; 5-50tr: Giám đốc bộ phận; trên 50tr: CEO). LLM đọc chunk nhưng bị nhầm lẫn ranh giới giữa Trưởng phòng và Giám đốc phòng ban khi tổng hợp.
-- **Suggested fix:** Hạ temperature xuống 0.0, tinh chỉnh prompt yêu cầu LLM trích dẫn chính xác dòng quy định thẩm quyền kèm số tiền cụ thể trước khi đưa ra kết luận.
+### 3. Chu kỳ đổi mật khẩu
 
-### #5
-- **Question:** Phụ cấp ăn trưa hàng tháng là bao nhiêu?
-- **Expected:** Phụ cấp ăn trưa là 1.000.000 VNĐ/tháng, chi trả cùng kỳ lương.
-- **Got:** Phụ cấp ăn trưa hàng tháng là **1.000.000 VNĐ/tháng**.
-- **Worst metric:** Faithfulness (0.00 theo đánh giá RAGAS do thiếu vế 'chi trả cùng kỳ lương')
-- **Error Tree:** Output đúng nội dung cốt lõi nhưng thiếu chi tiết phụ → Context có đủ → Đánh giá RAGAS chấm điểm khắt khe về completeness.
-- **Root cause:** Câu trả lời ngắn gọn, đúng số tiền 1.000.000 VNĐ nhưng LLM bỏ qua câu phụ "chi trả cùng kỳ lương", khiến metric RAGAS đối chiếu với ground truth bị lệch.
-- **Suggested fix:** Bổ sung vào system prompt chỉ dẫn: "Cung cấp câu trả lời đầy đủ bao gồm số tiền, thời gian và phương thức chi trả nếu có trong context".
+- **Kết quả:** 120 ngày theo v2.0, đúng chính sách hiện hành; context recall 0.5000. Ground truth còn giải thích bản v1 cũ là 90 ngày.
+- **Error Tree:** Output đúng → retriever loại `mat_khau_v1.md` đã bị thay thế để tránh trả sai → evaluator kỳ vọng cả thông tin lịch sử trong ground truth → thiếu ngữ cảnh bản cũ làm giảm recall dù câu hỏi chỉ hỏi quy định hiện hành.
+- **Cách xử lý:** Giữ ưu tiên v2.0 khi trả lời. Khi lập bộ eval, tách câu hỏi “hiện hành” khỏi câu hỏi “so sánh phiên bản”, hoặc đưa bản cũ vào context có nhãn hết hiệu lực mà không dùng để trả lời hiện hành.
 
----
+### 4. Độ dài tối thiểu mật khẩu
 
-## Case Study (cho presentation)
+- **Kết quả:** 12 ký tự theo v2.0, đúng hiện hành; context recall 0.5000. Ground truth nhắc thêm mốc 8 ký tự của v1 đã bị thay thế.
+- **Error Tree:** Output đúng → metadata filter bỏ bản cũ → RAGAS so với ground truth gồm cả thông tin v1 → giảm recall do lệch phạm vi đánh giá, không phải trả sai 12 ký tự.
+- **Cách xử lý:** Dùng cùng quy tắc phiên bản trong test set và retrieval; chỉ so sánh v1/v2 khi người dùng hỏi lịch sử thay đổi.
 
-**Question chọn phân tích:**  
-*"Lương thử việc của nhân viên Junior mức cao nhất là bao nhiêu?"*
+### 5. Ngày phép cộng theo thâm niên
 
-**Error Tree walkthrough:**
-1. **Output đúng?** → Không. LLM trả về *"Không tìm thấy"* trong khi tài liệu có đầy đủ dữ liệu.
-2. **Context đúng?** → Không. Context đưa vào LLM chỉ chứa chunk quy định chung về thời gian thử việc 60 ngày (`thu_viec.md`), hoàn toàn thiếu chunk bảng lương Junior 20 triệu (`bang_luong_2024.md`).
-3. **Query rewrite OK?** → Truy vấn gốc là câu hỏi gộp (composite query) yêu cầu tính toán: `Mức lương thử việc = 85% × Lương chính thức Junior`. Retriever thông thường chỉ tìm theo semantic similarity tổng thể nên không gom được cả 2 văn bản.
-4. **Fix ở bước:**  
-   - Cần bổ sung bước **Query Decomposition** (tách truy vấn trước khi tìm kiếm) hoặc **Multi-Hop Retrieval**.
-   - Thêm tính năng **Calculation/Tool use** cho LLM khi gặp các bài toán tính tỷ lệ phần trăm thù lao.
+- **Kết quả:** thêm một ngày sau mỗi 3 năm, đúng `nghi_phep_nam_v2024.md`; context recall 0.5000. Ground truth có thêm quy định cũ v2023 là 5 năm.
+- **Error Tree:** Output đúng → retriever bỏ `nghi_phep_nam_v2023.md` để tránh xung đột → ground truth yêu cầu thông tin cũ → evaluator tính thiếu một vế lịch sử.
+- **Cách xử lý:** Giữ câu trả lời hiện hành 3 năm; bổ sung bài eval riêng về so sánh chính sách 2023/2024 thay vì ép câu hỏi hiện hành phải truy xuất cả bản đã thay thế.
 
-**Nếu có thêm 1 giờ, sẽ optimize:**
-- Tích hợp kỹ thuật **Sub-Query Decomposition**: Khi nhận câu hỏi phức hợp, tự động phân tách thành các câu hỏi con độc lập, retrieve song song trên Qdrant và BM25, sau đó hợp nhất contexts trước khi rerank.
-- Tinh chỉnh **Metadata Filtering** để phân biệt chính sách hết hiệu lực (v2023) và chính sách hiện hành (v2024).
+## Kiểm tra lỗi số học và latency
+
+Ở lượt trước, model từng cộng mức phí tháng 300.000 VNĐ với phí ước tính 5 ngày 50.000 VNĐ thành 350.000 VNĐ. Đó là sai: với giả định tháng 30 ngày, phí phải trả cho 5 ngày quá hạn là khoảng **50.000 VNĐ**, còn 300.000 VNĐ chỉ là mức cho cả tháng. Pipeline hiện tính từ số tiền, mốc hạn và tỷ lệ trong tài liệu, rồi dùng câu trả lời xác định cho trường hợp này; test hồi quy `tests/test_pipeline_calculation.py` kiểm tra không cộng đôi. Lượt RAGAS cuối đã chạy lại toàn bộ sau sửa.
+
+| Bước | Giây |
+|---|---:|
+| Chunking | 0.17 |
+| Enrichment | 37.32 |
+| Indexing BM25 + Dense | 56.39 |
+| Tạo câu trả lời 20 câu | 524.51 |
+| RAGAS | 38.95 |
+| **Tổng** | **657.34** |
+
+Nút thắt là retrieval/reranking và sinh câu trả lời trên CPU trong 20 câu, nhất là truy vấn nhiều vế. Bảng này là thời gian đo của lượt chạy cuối; thời gian sẽ thay đổi theo máy và dịch vụ API.

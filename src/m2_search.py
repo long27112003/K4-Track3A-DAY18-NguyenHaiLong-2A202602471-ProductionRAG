@@ -27,7 +27,9 @@ def segment_vietnamese(text: str) -> str:
     try:
         from underthesea import word_tokenize
         segmented = word_tokenize(text, format="text")
-        return segmented.replace("_", " ")
+        # Index both compound words and their component words. Queries often
+        # mention only part of a compound ("nghỉ phép" vs "nghỉ phép năm").
+        return f"{segmented} {segmented.replace('_', ' ')}"
     except Exception:
         return text
 
