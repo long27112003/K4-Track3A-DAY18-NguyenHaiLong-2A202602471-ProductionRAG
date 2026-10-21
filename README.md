@@ -93,12 +93,12 @@ K4-Track3A-Production-RAG/
 ├── docker-compose.yml          # Qdrant local
 ├── .env.example                # API keys template
 │
-├── data/                       # Corpus tiếng Việt — 25 .md files + 3 PDFs (28 files total)
+├── data/                       # Corpus tiếng Việt — 25 .md gốc + 3 PDF + 2 OCR sidecar (30 files)
 │   ├── nghi_phep_nam_v2023.md  # Nghỉ phép 12 ngày (v2023, superseded)
 │   ├── nghi_phep_nam_v2024.md  # Nghỉ phép 15 ngày (v2024, hiện hành)
 │   ├── mat_khau_v1.md          # Password policy 90 ngày (OLD)
 │   ├── mat_khau_v2.md          # Password policy 120 ngày + MFA (NEW)
-│   ├── ... (28 files total)    # 8 categories: leave, salary, IT, workflow, training, admin, safety, compliance
+│   ├── ...                     # 8 categories: leave, salary, IT, workflow, training, admin, safety, compliance
 │   ├── so_tay_an_toan.pdf      # An toàn PCCC + sơ cứu (PDF text)
 │   ├── BCTC.pdf                # Tờ khai thuế GTGT dạng scan
 │   ├── BCTC.ocr.md             # Các chỉ tiêu đã đối chiếu với ảnh gốc
