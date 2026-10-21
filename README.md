@@ -100,8 +100,10 @@ K4-Track3A-Production-RAG/
 │   ├── mat_khau_v2.md          # Password policy 120 ngày + MFA (NEW)
 │   ├── ... (28 files total)    # 8 categories: leave, salary, IT, workflow, training, admin, safety, compliance
 │   ├── so_tay_an_toan.pdf      # An toàn PCCC + sơ cứu (PDF text)
-│   ├── BCTC.pdf                # Báo cáo tài chính (scan, cần OCR)
-│   └── Nghi_dinh_so_13-2023_ve_bao_ve_du_lieu_ca_nhan_508ee.pdf # Nghị định BVDL (scan, cần OCR)
+│   ├── BCTC.pdf                # Tờ khai thuế GTGT dạng scan
+│   ├── BCTC.ocr.md             # Các chỉ tiêu đã đối chiếu với ảnh gốc
+│   ├── Nghi_dinh_so_13-2023_ve_bao_ve_du_lieu_ca_nhan_508ee.pdf # Nghị định BVDL dạng scan
+│   └── Nghi_dinh_so_13-2023_ve_bao_ve_du_lieu_ca_nhan_508ee.ocr.md # OCR 39 trang, có nguồn/trang
 ├── test_set.json               # 20 Q&A pairs (6 types: lookup, version, negation, multi-hop, numeric, ambiguous)
 │
 ├── src/                        # ★ Scaffold code (có TODO markers)
@@ -133,6 +135,14 @@ K4-Track3A-Production-RAG/
 ```
 
 ## Timeline (Thời lượng ước tính)
+
+Hai PDF scan được nạp qua file `.ocr.md` cùng tên gốc. Loader giữ `source` là
+tên PDF, thêm metadata `ocr=true` và không đưa trùng bản PDF không có text layer.
+`BCTC.ocr.md` chỉ ghi các chỉ tiêu đã đối chiếu trực quan vì OCR bảng tự động
+đọc sai ô số. Nghị định có OCR đủ 39 trang; các điều khoản quan trọng vẫn cần
+đối chiếu trang PDF gốc trước khi sử dụng. Có thể tạo lại OCR bằng
+`scripts/ocr_scanned_pdf.py` với OpenAI key trong biến môi trường và Poppler.
+
 
 | Thời lượng | Hoạt động |
 |------------|-----------|

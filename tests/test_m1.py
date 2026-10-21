@@ -96,3 +96,21 @@ def test_compare_all_strategies():
         r = compare_strategies(docs)
         for key in ["basic", "semantic", "hierarchical", "structure"]:
             assert key in r, f"Missing strategy: {key}"
+
+
+def test_scanned_pdf_uses_ocr_sidecar_once(tmp_path):
+    from pypdf import PdfWriter
+
+    pdf = tmp_path / "scan.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=300, height=300)
+    with pdf.open("wb") as stream:
+        writer.write(stream)
+    (tmp_path / "scan.ocr.md").write_text("## Trang 1\n\nNội dung đã OCR", encoding="utf-8")
+
+    docs = load_documents(str(tmp_path))
+    assert len(docs) == 1
+    assert docs[0]["metadata"] == {
+        "source": "scan.pdf", "ocr": True, "ocr_sidecar": "scan.ocr.md"
+    }
+    assert "Nội dung đã OCR" in docs[0]["text"]

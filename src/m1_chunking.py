@@ -39,21 +39,28 @@ def _extract_pdf_text(path: str) -> str:
 
 
 def load_documents(data_dir: str = DATA_DIR) -> list[dict]:
-    """Load tất cả markdown và PDF (có text layer) từ data/. (Đã implement sẵn)
+    """Load Markdown, PDF text layers, and reviewed OCR Markdown sidecars from data/.
 
     - .md: đọc trực tiếp.
-    - .pdf: trích text layer bằng pypdf. PDF scan ảnh (không có text) bị bỏ qua
-      kèm cảnh báo — RAG text-based không xử lý được scan nếu chưa OCR.
+    - .pdf: trích text layer bằng pypdf; PDF scan dùng sidecar .ocr.md nếu có.
     """
     docs = []
     for fp in sorted(glob.glob(os.path.join(data_dir, "*.md"))):
+        basename = os.path.basename(fp)
+        is_ocr = basename.endswith(".ocr.md")
+        source = basename[:-7] + ".pdf" if is_ocr else basename
         with open(fp, encoding="utf-8") as f:
-            docs.append({"text": f.read(), "metadata": {"source": os.path.basename(fp)}})
+            metadata = {"source": source}
+            if is_ocr:
+                metadata.update({"ocr": True, "ocr_sidecar": basename})
+            docs.append({"text": f.read(), "metadata": metadata})
 
     for fp in sorted(glob.glob(os.path.join(data_dir, "*.pdf"))):
         text = _extract_pdf_text(fp)
         if text:
             docs.append({"text": text, "metadata": {"source": os.path.basename(fp)}})
+        elif os.path.exists(os.path.splitext(fp)[0] + ".ocr.md"):
+            pass  # The reviewed OCR sidecar has already been loaded above.
         else:
             print(f"  ⚠️  Bỏ qua {os.path.basename(fp)}: PDF scan ảnh, không có text layer (cần OCR).")
 
