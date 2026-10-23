@@ -143,6 +143,10 @@ tên PDF, thêm metadata `ocr=true` và không đưa trùng bản PDF không có
 đối chiếu trang PDF gốc trước khi sử dụng. Có thể tạo lại OCR bằng
 `scripts/ocr_scanned_pdf.py` với OpenAI key trong biến môi trường và Poppler.
 
+`reports/ragas_report.json` được tạo trước khi thêm hai OCR sidecar. Các chỉ số
+trong báo cáo là kết quả thật của corpus cũ; chưa có lượt RAGAS 20 câu cho corpus
+đã mở rộng. Xem `analysis/failure_analysis.md` để biết phạm vi của các ngưỡng bonus.
+
 
 | Thời lượng | Hoạt động |
 |------------|-----------|

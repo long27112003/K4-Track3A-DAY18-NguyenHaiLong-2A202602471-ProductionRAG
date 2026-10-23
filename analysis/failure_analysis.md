@@ -1,7 +1,7 @@
 # Failure Analysis — Lab 18: Production RAG
 
 **Học viên:** Nguyễn Hải Long · **MSSV:** 2A202602471
-**Lượt đánh giá:** 20 câu, pipeline và RAGAS chạy live ngày 21/10/2026. Nguồn: `reports/ragas_report.json`.
+**Lượt đánh giá:** 20 câu, pipeline và RAGAS chạy live ngày 21/10/2026. Nguồn: `reports/ragas_report.json`. Lượt này chạy trước khi bổ sung hai OCR sidecar; các điểm số dưới đây chưa đo lại trên corpus đã mở rộng.
 
 ## Kết quả
 
@@ -12,7 +12,7 @@
 | Context precision | 0.9222 | 0.9917 | +0.0694 |
 | Context recall | 0.9211 | 0.9000 | -0.0211 |
 
-Năm module đạt 38/38 test trong môi trường có đủ dependency. Faithfulness ≥0.85, cả bốn metric ≥0.75, enrichment combined mode một API call/chunk và bảng latency thỏa bốn điều kiện bonus công khai (+10 tối đa); điểm chính thức vẫn do giám khảo chấm. Hai PDF scan ảnh không có text layer được loader bỏ qua có cảnh báo, cần OCR nếu muốn đưa chúng vào corpus.
+Năm module đạt 38/38 test trong môi trường có đủ dependency ở lượt chạy trước. Faithfulness ≥0.85, cả bốn metric ≥0.75, enrichment combined mode một API call/chunk và bảng latency thỏa bốn điều kiện bonus công khai (+10 tối đa) **trên corpus của lượt đo đó**; điểm chính thức vẫn do giám khảo chấm. Sau lượt đo, hai PDF scan được nạp bằng OCR sidecar và kiểm thử loader liên quan đã pass. Cần chạy lại pipeline/RAGAS 20 câu khi Docker Qdrant sẵn sàng để xác nhận các ngưỡng bonus trên corpus mới.
 
 ## Bottom-5: chẩn đoán theo Error Tree
 
